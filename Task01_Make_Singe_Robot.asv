@@ -1,0 +1,167 @@
+% MATLAB 작업 환경 초기화
+clc;
+clear;
+close all;
+
+%% Figure 생성
+
+figure;
+
+ax = axes('XLim', [-10 10], ...
+          'YLim', [-10 10], ...
+          'ZLim', [0 15]);
+
+view(3);
+grid on;
+hold on;
+
+xlabel('X (m)');
+ylabel('Y (m)');
+zlabel('Z (m)');
+
+title('UAV Task Allocation Simulation');
+
+%% STL 파일 읽기
+
+fv = stlread("multirotor.stl");
+
+%% UAV 모델 전처리
+
+scaleFactor = 0.01;
+
+centroid = mean(fv.Points, 1);
+
+baseVertices = (fv.Points - centroid) * scaleFactor;
+
+%% UAV 초기 위치
+
+uavPos = [-8 0 5];
+
+vertices = baseVertices + uavPos;
+
+%% UAV 생성
+
+p = patch('Parent', ax, ...
+          'Faces', fv.ConnectivityList, ...
+          'Vertices', vertices, ...
+          'FaceColor', [0.6350 0.0780 0.1840], ...
+          'EdgeColor', 'none');
+
+axis(ax, 'manual');
+
+camlight;
+lighting gouraud;
+
+%% Random Task Generation
+
+numTasks = 5;
+
+% task 좌표 저장
+tasks = zeros(numTasks, 3);
+
+for i = 1:numTasks
+
+    % random x, y 생성
+    tx = -8 + 16 * rand;
+    ty = -8 + 16 * rand;
+    tz = 5;
+
+    tasks(i,:) = [tx ty tz];
+
+end
+
+% task 시각화
+scatter3(tasks(:,1), tasks(:,2), tasks(:,3), ...
+         100, 'filled', 'b');
+
+%% Task 완료 여부 저장
+
+taskCompleted = false(numTasks,1);
+
+%% UAV 이동 파라미터
+
+speed = 0.05;
+
+%% Simulation Loop
+
+while true
+
+    % -----------------------------
+    % 남은 task 확인
+    % -----------------------------
+
+    remainingTasks = find(~taskCompleted);
+
+    % 모든 task 완료 시 종료
+    if isempty(remainingTasks)
+
+        disp('All tasks completed');
+        break;
+
+    end
+
+    % -----------------------------
+    % nearest task 탐색
+    % -----------------------------
+
+    minDist = inf;
+    nearestIdx = -1;
+
+    for i = remainingTasks'
+
+        dist = norm(tasks(i,:) - uavPos);
+
+        if dist < minDist
+
+            minDist = dist;
+            nearestIdx = i;
+
+        end
+
+    end
+
+    % 현재 목표 task
+    target = tasks(nearestIdx,:);
+
+    % -----------------------------
+    % UAV 이동 방향 계산
+    % -----------------------------
+
+    direction = target - uavPos;
+
+    distance = norm(direction);
+
+    % 정규화
+    direction = direction / distance;
+
+    % UAV 위치 업데이트
+    uavPos = uavPos + speed * direction;
+
+    % -----------------------------
+    % Task 도착 판정
+    % -----------------------------
+
+    if distance < 0.2
+
+        taskCompleted(nearestIdx) = true;
+
+        disp(['Task ', num2str(nearestIdx), ' completed']);
+
+    end
+
+    % -----------------------------
+    % UAV mesh 업데이트
+    % -----------------------------
+
+    newVertices = baseVertices + uavPos;
+
+    if isvalid(p)
+
+        p.Vertices = newVertices;
+
+    end
+
+
+    drawnow;
+
+end
