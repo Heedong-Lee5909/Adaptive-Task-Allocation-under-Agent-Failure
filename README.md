@@ -1,158 +1,212 @@
-# Adaptive Task Reallocation under Agent Failure
+# Task03_Agent_Failure_Task_Release
 
 ## Overview | 프로젝트 개요
 
-This project focuses on decentralized task allocation for multi-UAV systems under agent failure conditions using MATLAB simulation.
+This project implements a baseline task reallocation strategy for a multi-UAV system under agent failure conditions using MATLAB simulation.
 
-본 프로젝트는 MATLAB 기반 시뮬레이션 환경에서 agent failure 상황에서도 동작 가능한 decentralized multi-UAV task allocation 구조를 구현하는 것을 목표로 한다.
+본 프로젝트는 MATLAB 기반 Multi-UAV 환경에서 Agent Failure 발생 시 Task Release 전략을 적용하여 Mission Continuity를 유지하는 구조를 구현하는 것을 목표로 한다.
+
+When a UAV fails during mission execution, the unfinished task is released and becomes available for future allocation by the remaining UAVs.
+
+UAV가 임무 수행 중 고장나면 해당 UAV가 수행 중이던 Task를 Release하여 남은 UAV들이 이후 재할당할 수 있도록 구현하였다.
 
 ---
 
 ## Objective | 목표
 
-### English
+* Implement Multi-UAV Task Allocation
+  다중 UAV 환경에서 Task Allocation 구현
 
-* Implement task allocation in multi-agent UAV systems
 * Simulate UAV movement and task execution
-* Handle agent/task reassignment under failure conditions
-* Study resilience and robustness of decentralized coordination
+  UAV 이동 및 Task 수행 시뮬레이션
 
-### 한국어
+* Simulate Agent Failure events
+  Agent Failure 시나리오 구현
 
-* 다중 UAV 환경에서 task allocation 구현
-* UAV 이동 및 task 수행 시뮬레이션
-* failure 상황에서 task reassignment 수행
-* decentralized coordination의 robustness 분석
+* Release unfinished tasks after failure
+  Failure 발생 시 미완료 Task Release
+
+* Analyze mission continuity under failure conditions
+  Failure 상황에서 Mission Continuity 분석
 
 ---
 
 ## Current Implementation | 현재 구현 내용
 
-### 1. 3D UAV Visualization
+### 1. Multi-UAV Simulation
 
-#### English
+* 4 UAV agents operating simultaneously
 
 * STL-based UAV rendering
-* UAV scaling and positioning
-* 3D visualization using MATLAB `patch()`
 
-#### 한국어
+* Independent UAV movement
+
+* 4대의 UAV 동시 운용
 
 * STL 기반 UAV 모델 렌더링
-* UAV 크기 조정 및 위치 설정
-* MATLAB `patch()` 기반 3D 시각화
+
+* UAV별 독립 이동 구현
 
 ---
 
 ### 2. Random Task Generation
 
-#### English
+* Random task generation in 3D space
 
-* Random task node generation
-* Task visualization using `scatter3()`
+* Task visualization using scatter3()
 
-#### 한국어
+* 3D 공간 내 Random Task 생성
 
-* Random task 생성
-* `scatter3()` 기반 task 시각화
+* scatter3() 기반 Task 시각화
 
 ---
 
 ### 3. Nearest Task Allocation
 
-#### English
+* Distance-based greedy task allocation
 
-* Greedy nearest-task selection
-* Distance-based task assignment
+* Each UAV selects the nearest available task
 
-#### 한국어
+* 거리 기반 Greedy Task Allocation
 
-* nearest-task 기반 greedy allocation
-* 거리 기반 task 선택
+* UAV별 가장 가까운 Task 선택
 
 Distance Metric:
 
 [
-d_i = | p_{task,i} - p_{uav} |
+d = ||p_{task} - p_{uav}||
 ]
 
 ---
 
 ### 4. UAV Motion Simulation
 
-#### English
-
 * Position-based UAV movement
-* Direction vector normalization
-* Continuous mesh update
 
-#### 한국어
+* Direction vector normalization
+
+* Continuous UAV mesh update
 
 * 위치 기반 UAV 이동
+
 * 방향 벡터 정규화
-* UAV mesh 실시간 업데이트
+
+* UAV Mesh 실시간 업데이트
 
 Motion Model:
 
 [
-p_{t+1}=p_t+v_t\Delta t
+p_{t+1}=p_t+v_t
 ]
 
 ---
 
-### 5. Multi-UAV Task Allocation
+### 5. Agent Failure Simulation
 
-#### English
+* Random UAV failure event
 
-* Multi-UAV task execution
-* Independent task assignment
-* Task completion monitoring
-* Task status visualization
+* Failure triggered at a predefined simulation step
 
-#### 한국어
+* Failed UAV becomes inactive
 
-* 다중 UAV 기반 task 수행
-* UAV별 독립 task 할당
-* Task 완료 여부 관리
-* Task 상태 시각화
+* Random UAV Failure 발생
+
+* 특정 Simulation Step에서 Failure 발생
+
+* Failure UAV 비활성화
 
 ---
 
-### 6. Agent Failure Simulation
+### 6. Task Release Strategy
 
-#### English
+When a UAV fails:
 
-* Agent failure event generation
-* UAV status management
-* Failure scenario verification
+1. Current task is identified
+2. Task assignment is removed
+3. Task becomes unassigned
+4. Remaining UAVs can select the task later
 
-#### 한국어
+Failure 발생 시:
 
-* Agent failure 이벤트 생성
-* UAV 상태 관리
-* Failure 시나리오 검증
+1. 수행 중인 Task 확인
+2. Task Assignment 제거
+3. Task를 미할당 상태로 복구
+4. 남은 UAV가 향후 재할당 가능
 
 ---
 
-## Planned Features | 향후 구현 예정
+## Failure Handling Strategy | Failure 처리 전략
 
-### English
+### Baseline Method : Task Release
 
-* Adaptive task reassignment after agent failure
-* Decentralized task reallocation
-* Communication constraints
-* Multi-UAV coordination
-* Consensus-Based Bundle Algorithm (CBBA)
-* Performance evaluation metrics
+```text
+Agent Failure
+        ↓
+Task Release
+        ↓
+Unassigned Task
+        ↓
+Future Reallocation
+```
 
-### 한국어
+현재 버전은 Immediate Reallocation을 수행하지 않고, Failure 발생 시 Task를 Release하여 이후 Allocation 과정에서 재선택될 수 있도록 구현하였다.
 
-* Agent failure 이후 adaptive task reassignment
-* Decentralized task reallocation
-* Communication constraint 적용
-* Multi-UAV coordination
-* CBBA 기반 task allocation
-* 성능 평가 metric 분석
+---
+
+## Limitations | 한계
+
+* Immediate task reassignment is not implemented
+
+* Communication constraints are not considered
+
+* Workload balancing is not considered
+
+* Distributed bidding mechanisms are not implemented
+
+* CBBA is not implemented
+
+* 즉각적인 Task Reallocation 미구현
+
+* Communication Constraint 미반영
+
+* Workload Balancing 미반영
+
+* Distributed Bidding 미구현
+
+* CBBA 미구현
+
+---
+
+## Future Work | 향후 계획
+
+### Task04
+
+Immediate Nearest Reallocation
+
+Failure 발생 시 가장 가까운 UAV에게 즉시 Task 재할당
+
+### Task05
+
+CBBA Reallocation
+
+CBBA 기반 Distributed Task Allocation 구현
+
+### Task06
+
+Communication Constraints
+
+Communication Range 및 Local Information 기반 Allocation 구현
+
+### Task07
+
+Performance Evaluation
+
+* Mission Completion Time
+* Reallocation Latency
+* Task Completion Rate
+* Distance Traveled
+
+성능 지표를 활용한 Reallocation 전략 비교 분석 수행
 
 ---
 
@@ -160,23 +214,21 @@ p_{t+1}=p_t+v_t\Delta t
 
 * MATLAB
 * STL UAV Model
-* 3D Visualization (`patch`)
-* Task Visualization (`scatter3`)
+* patch()
+* scatter3()
+* Multi-UAV Simulation
 
 ---
 
 ## Project Status | 진행 현황
 
-| Feature                   | Status      |
-| ------------------------- | ----------- |
-| 3D UAV Visualization      | Complete    |
-| Random Task Generation    | Complete    |
-| Nearest Task Allocation   | Complete    |
-| Multi-UAV Simulation      | Complete    |
-| Agent Failure Simulation  | Complete    |
-| Task Reallocation         | In Progress |
-| Communication Constraints | Planned     |
-| CBBA                      | Planned     |
-| Performance Evaluation    | Planned     |
-
----
+| Feature                  | Status   |
+| ------------------------ | -------- |
+| Multi-UAV Simulation     | Complete |
+| Random Task Generation   | Complete |
+| Nearest Task Allocation  | Complete |
+| Agent Failure Simulation | Complete |
+| Task Release Strategy    | Complete |
+| Immediate Reallocation   | Planned  |
+| CBBA Reallocation        | Planned  |
+| Performance Evaluation   | Planned  |
