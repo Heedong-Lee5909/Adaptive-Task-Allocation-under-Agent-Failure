@@ -1,234 +1,410 @@
-# Task03_Agent_Failure_Task_Release
+# Task04_Cost_Based_Task_Allocation
 
 ## Overview | 프로젝트 개요
 
-This project implements a baseline task reallocation strategy for a multi-UAV system under agent failure conditions using MATLAB simulation.
+This project implements a Cost-Based Task Reallocation strategy for a Multi-UAV system operating under Agent Failure conditions.
 
-본 프로젝트는 MATLAB 기반 Multi-UAV 환경에서 Agent Failure 발생 시 Task Release 전략을 적용하여 Mission Continuity를 유지하는 구조를 구현하는 것을 목표로 한다.
+본 프로젝트는 MATLAB 기반 Multi-UAV 환경에서 Agent Failure 발생 시 Cost-Based Task Reallocation을 수행하여 Mission Continuity를 유지하는 구조를 구현하는 것을 목표로 한다.
 
-When a UAV fails during mission execution, the unfinished task is released and becomes available for future allocation by the remaining UAVs.
+Unlike the previous Task03 approach, which simply released unfinished tasks after a failure, this version immediately reallocates the failed UAV's remaining tasks to surviving UAVs using a cost function that considers both distance and workload.
 
-UAV가 임무 수행 중 고장나면 해당 UAV가 수행 중이던 Task를 Release하여 남은 UAV들이 이후 재할당할 수 있도록 구현하였다.
-
----
-
-## Objective | 목표
-
-* Implement Multi-UAV Task Allocation
-  다중 UAV 환경에서 Task Allocation 구현
-
-* Simulate UAV movement and task execution
-  UAV 이동 및 Task 수행 시뮬레이션
-
-* Simulate Agent Failure events
-  Agent Failure 시나리오 구현
-
-* Release unfinished tasks after failure
-  Failure 발생 시 미완료 Task Release
-
-* Analyze mission continuity under failure conditions
-  Failure 상황에서 Mission Continuity 분석
+기존 Task03에서는 고장 UAV의 미완료 Task를 단순 Release하였지만, Task04에서는 거리 비용(Distance Cost)과 작업량 비용(Workload Cost)을 고려하여 즉시 재할당을 수행한다.
 
 ---
 
-## Current Implementation | 현재 구현 내용
+# Objective | 목표
 
-### 1. Multi-UAV Simulation
-
-* 4 UAV agents operating simultaneously
-
-* STL-based UAV rendering
-
-* Independent UAV movement
-
-* 4대의 UAV 동시 운용
-
-* STL 기반 UAV 모델 렌더링
-
-* UAV별 독립 이동 구현
+- Implement Multi-UAV Task Allocation
+- Implement Queue-Based Mission Execution
+- Simulate UAV Motion
+- Simulate Agent Failure Events
+- Implement Cost-Based Immediate Reallocation
+- Improve Mission Continuity
+- Reduce Task Loss After Failure
 
 ---
 
-### 2. Random Task Generation
+# System Architecture
 
-* Random task generation in 3D space
-
-* Task visualization using scatter3()
-
-* 3D 공간 내 Random Task 생성
-
-* scatter3() 기반 Task 시각화
-
----
-
-### 3. Nearest Task Allocation
-
-* Distance-based greedy task allocation
-
-* Each UAV selects the nearest available task
-
-* 거리 기반 Greedy Task Allocation
-
-* UAV별 가장 가까운 Task 선택
-
-Distance Metric:
-
-[
-d = ||p_{task} - p_{uav}||
-]
+```text
+Random Task Generation
+          ↓
+ Initial Task Allocation
+          ↓
+     UAV Queue
+          ↓
+     Task Execution
+          ↓
+     Agent Failure
+          ↓
+ Cost-Based Reallocation
+          ↓
+ Mission Continuation
+```
 
 ---
 
-### 4. UAV Motion Simulation
+# Current Implementation | 현재 구현 내용
 
-* Position-based UAV movement
+## 1. Multi-UAV Simulation
 
-* Direction vector normalization
+Features:
 
-* Continuous UAV mesh update
+- 4 UAV agents
+- Independent UAV motion
+- STL-based visualization
+- Real-time simulation
 
-* 위치 기반 UAV 이동
+Implementation:
 
-* 방향 벡터 정규화
+- patch()
+- scatter3()
+- drawnow()
 
-* UAV Mesh 실시간 업데이트
+---
+
+## 2. Random Task Generation
+
+Task positions are randomly generated inside the mission area.
+
+```matlab
+tx = -40 + 80 * rand;
+ty = -40 + 80 * rand;
+tz = 5;
+```
+
+Task locations are visualized using scatter3().
+
+---
+
+## 3. Queue-Based Task Allocation
+
+Unlike the previous version where a UAV only possessed one task at a time, Task04 introduces a queue structure.
+
+```matlab
+uavQueue = cell(numUAV,1);
+```
+
+Example:
+
+```text
+UAV1 : [1 4 7]
+UAV2 : [2 5]
+UAV3 : [3 8 9]
+UAV4 : [6]
+```
+
+The UAV always executes the first task in its queue.
+
+---
+
+## 4. FIFO Task Execution
+
+Tasks are executed in FIFO order.
+
+```text
+Queue
+ ↓
+[3 7 11]
+ ↓
+Task 3 Complete
+ ↓
+[7 11]
+ ↓
+Task 7 Complete
+ ↓
+[11]
+```
+
+MATLAB:
+
+```matlab
+currentTask = uavQueue{i}(1);
+```
+
+---
+
+## 5. UAV Motion Simulation
+
+The UAV continuously moves toward its assigned target.
 
 Motion Model:
 
-[
-p_{t+1}=p_t+v_t
-]
+p(t+1) = p(t) + v(t)
+
+Implementation:
+
+```matlab
+direction = target - uavPos{i};
+direction = direction / distance;
+
+uavPos{i} = uavPos{i} + speed * direction;
+```
 
 ---
 
-### 5. Agent Failure Simulation
+## 6. Agent Failure Simulation
 
-* Random UAV failure event
+A random UAV is selected before simulation begins.
 
-* Failure triggered at a predefined simulation step
+```matlab
+failedUAV = randi([1,numUAV]);
+```
 
-* Failed UAV becomes inactive
+Failure occurs at:
 
-* Random UAV Failure 발생
+```matlab
+if simStep == 100
+```
 
-* 특정 Simulation Step에서 Failure 발생
+Effects:
 
-* Failure UAV 비활성화
+- UAV becomes inactive
+- Remaining tasks remain unfinished
+- Queue is extracted
+- Tasks are reassigned
 
 ---
 
-### 6. Task Release Strategy
+## 7. Cost-Based Immediate Reallocation
 
 When a UAV fails:
 
-1. Current task is identified
-2. Task assignment is removed
-3. Task becomes unassigned
-4. Remaining UAVs can select the task later
-
-Failure 발생 시:
-
-1. 수행 중인 Task 확인
-2. Task Assignment 제거
-3. Task를 미할당 상태로 복구
-4. 남은 UAV가 향후 재할당 가능
-
----
-
-## Failure Handling Strategy | Failure 처리 전략
-
-### Baseline Method : Task Release
-
 ```text
 Agent Failure
-        ↓
-Task Release
-        ↓
-Unassigned Task
-        ↓
-Future Reallocation
+      ↓
+Extract Remaining Tasks
+      ↓
+Evaluate Cost
+      ↓
+Select Best UAV
+      ↓
+Append Task To Queue
 ```
 
-현재 버전은 Immediate Reallocation을 수행하지 않고, Failure 발생 시 Task를 Release하여 이후 Allocation 과정에서 재선택될 수 있도록 구현하였다.
+---
+
+## Cost Function
+
+The allocation decision uses:
+
+Cost = DistanceCost + WorkloadCost
+
+### Distance Cost
+
+Distance from UAV to task.
+
+```matlab
+distanceCost = norm(tasks(failedTask,:) - uavPos{k});
+```
+
+Mathematically:
+
+Cd = || ptask - puav ||
 
 ---
 
-## Limitations | 한계
+### Workload Cost
 
-* Immediate task reassignment is not implemented
+Penalty proportional to queue size.
 
-* Communication constraints are not considered
+```matlab
+workloadCost = 20 * length(uavQueue{k});
+```
 
-* Workload balancing is not considered
+Meaning:
 
-* Distributed bidding mechanisms are not implemented
+```text
+Queue Length = 0 → Cost = 0
+Queue Length = 1 → Cost = 20
+Queue Length = 2 → Cost = 40
+Queue Length = 3 → Cost = 60
+```
 
-* CBBA is not implemented
-
-* 즉각적인 Task Reallocation 미구현
-
-* Communication Constraint 미반영
-
-* Workload Balancing 미반영
-
-* Distributed Bidding 미구현
-
-* CBBA 미구현
+This prevents one UAV from receiving all reassigned tasks.
 
 ---
 
-## Future Work | 향후 계획
+### Total Cost
 
-### Task04
+```matlab
+cost = distanceCost + workloadCost;
+```
 
-Immediate Nearest Reallocation
+The UAV with minimum cost wins the task.
 
-Failure 발생 시 가장 가까운 UAV에게 즉시 Task 재할당
+---
 
-### Task05
+## 8. Queue Reallocation Example
 
-CBBA Reallocation
+Before Failure:
 
-CBBA 기반 Distributed Task Allocation 구현
+```text
+UAV1 : [3 5]
+UAV2 : [7]
+UAV3 : [9 10 12]
+UAV4 : [4 8]
+```
 
-### Task06
+Suppose UAV4 fails.
 
-Communication Constraints
+Remaining tasks:
 
-Communication Range 및 Local Information 기반 Allocation 구현
+```text
+[4 8]
+```
 
-### Task07
+Cost is evaluated for all surviving UAVs.
+
+Result:
+
+```text
+UAV1 : [3 5 4]
+UAV2 : [7]
+UAV3 : [9 10 12 8]
+```
+
+Mission continues without losing tasks.
+
+---
+
+## 9. Task Visualization
+
+Task State:
+
+Blue:
+- Uncompleted
+
+Green:
+- Completed
+
+Implementation:
+
+```matlab
+taskPlot.CData = colors;
+```
+
+---
+
+# Failure Handling Strategy
+
+## Task03
+
+```text
+Failure
+   ↓
+Task Release
+   ↓
+Future Allocation
+```
+
+## Task04
+
+```text
+Failure
+   ↓
+Cost Evaluation
+   ↓
+Immediate Reallocation
+   ↓
+Mission Continuation
+```
+
+Task04 reduces mission interruption and improves task completion probability.
+
+---
+
+# Limitations | 한계
+
+Current implementation still assumes:
+
+- Perfect communication
+- No communication range limitation
+- No packet loss
+- No battery constraints
+- No task priority
+- Centralized decision making
+- No bidding mechanism
+
+---
+
+# Future Work
+
+## Task05
+
+CBBA-Based Distributed Task Allocation
+
+Features:
+
+- Local bidding
+- Consensus process
+- Distributed decision making
+
+---
+
+## Task06
+
+Communication-Constrained Reallocation
+
+Features:
+
+- Communication range
+- Neighbor discovery
+- Local information sharing
+
+---
+
+## Task07
 
 Performance Evaluation
 
-* Mission Completion Time
-* Reallocation Latency
-* Task Completion Rate
-* Distance Traveled
+Metrics:
 
-성능 지표를 활용한 Reallocation 전략 비교 분석 수행
-
----
-
-## Development Environment | 개발 환경
-
-* MATLAB
-* STL UAV Model
-* patch()
-* scatter3()
-* Multi-UAV Simulation
+- Mission Completion Time
+- Reallocation Latency
+- Distance Traveled
+- Task Completion Rate
+- Workload Balance Index
 
 ---
 
-## Project Status | 진행 현황
+# Development Environment
 
-| Feature                  | Status   |
-| ------------------------ | -------- |
-| Multi-UAV Simulation     | Complete |
-| Random Task Generation   | Complete |
-| Nearest Task Allocation  | Complete |
+- MATLAB
+- STL UAV Model
+- patch()
+- scatter3()
+- Cell Array Queue Structure
+
+---
+
+# Project Status
+
+| Feature | Status |
+|----------|----------|
+| Multi-UAV Simulation | Complete |
+| Random Task Generation | Complete |
+| Queue-Based Allocation | Complete |
+| FIFO Task Execution | Complete |
 | Agent Failure Simulation | Complete |
-| Task Release Strategy    | Complete |
-| Immediate Reallocation   | Planned  |
-| CBBA Reallocation        | Planned  |
-| Performance Evaluation   | Planned  |
+| Cost-Based Reallocation | Complete |
+| Queue Visualization | Complete |
+| CBBA Allocation | Planned |
+| Communication Constraints | Planned |
+| Performance Evaluation | Planned |
+
+---
+
+# Version History
+
+## Task03
+
+Nearest Task Allocation + Task Release
+
+## Task04
+
+Queue-Based Cost Reallocation
+
+## Task05 (Planned)
+
+CBBA Distributed Allocation
