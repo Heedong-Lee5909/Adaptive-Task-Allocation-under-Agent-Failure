@@ -1,327 +1,122 @@
-# Task05_CBBA_Based_Task_Allocation
+# Adaptive Task Allocation under Agent Failure
 
-# Overview | 프로젝트 개요
+A MATLAB simulation of a four-UAV team that allocates tasks with the Consensus-Based Bundle Algorithm (CBBA) and reallocates unfinished tasks through an auction when a UAV fails.
 
-## English
+<!-- Add demo GIF here: ![Failure and reallocation demo](docs/demo.gif) -->
 
-This project implements a CBBA-inspired Task Allocation framework for a Multi-UAV system operating in dynamic environments.
+## Problem
 
-Unlike Task04, which focused on Cost-Based Reallocation after agent failure, Task05 introduces distributed task allocation concepts through Bid generation, Bundle construction, Conflict Resolution, Consensus, and Adaptive Reallocation.
+A multi-UAV mission has to answer two questions:
 
-## 한국어
+1. How can UAVs agree on who does which task when each one only communicates with its neighbors?
+2. When a UAV fails mid-mission, how can its unfinished tasks be handed to the remaining UAVs?
 
-본 프로젝트는 Multi-UAV 환경에서 CBBA(Consensus-Based Bundle Algorithm) 개념을 기반으로 한 Task Allocation 시스템을 구현한다.
+This project simulates both stages in a single mission.
 
-기존 Task04에서는 Agent Failure 이후 Cost-Based Reallocation에 초점을 맞추었지만, Task05에서는 Bid 생성, Bundle 구성, Conflict Resolution, Consensus, Adaptive Reallocation 과정을 포함하는 CBBA 기반 임무 할당 구조를 구현하였다.
+## How It Works
 
----
+```text
+Generate 20 random tasks
+        |
+        v
+Run CBBA until the UAVs agree
+  1. Bundle construction
+  2. Consensus with neighbors
+  3. Release of lost tasks
+        |
+        v
+Execute task paths
+        |
+        v
+UAV fails at step 100
+        |
+        v
+Release its unfinished tasks
+        |
+        v
+Auction each task among surviving UAVs
+        |
+        v
+Continue until all tasks are complete
+```
 
-# Objective | 목표
+### Initial allocation: CBBA
 
-## English
+Each UAV keeps its own local view of the auction:
 
-* Multi-UAV Task Allocation
-* CBBA-Inspired Bundle Allocation
-* Consensus-Based Conflict Resolution
-* Agent Failure Simulation
-* Auction-Based Adaptive Reallocation
-* Mission Continuity Improvement
+| Variable | Meaning |
+|---|---|
+| `y(i,j)` | Highest bid for task `j` known to UAV `i` |
+| `z(i,j)` | Winner of task `j` according to UAV `i` (`0` means none) |
+| `s(i,m)` | Time of the latest information UAV `i` has from UAV `m` |
 
-## 한국어
+**Bundle construction.** Each UAV repeatedly adds the task with the highest marginal score, trying every insertion position in its current path. It can only bid on a task if its score beats the highest bid it knows. A path is scored with a distance-discounted reward:
 
-* Multi-UAV Task Allocation 구현
-* CBBA 기반 Bundle Allocation 구현
-* Consensus 기반 Conflict Resolution 구현
-* Agent Failure 시나리오 구현
-* Auction 기반 Adaptive Reallocation 구현
-* Mission Continuity 향상
+$$
+S(p) = \sum_{j \in p} R \, \lambda^{d_j}
+$$
 
----
+where $R$ is the task reward, $\lambda$ is the discount per meter, and $d_j$ is the distance traveled along the path to reach task $j$.
 
-# Current Implementation | 현재 구현 내용
+**Consensus.** UAVs exchange `y`, `z`, and `s` only with neighbors in the communication graph, which is a ring (`1-2-3-4-1`). Conflicts are resolved with the update, reset, and leave rules of Choi et al. (2009).
 
-## 1. Multi-UAV Simulation
+**Task release.** If a UAV is outbid on a task, it releases that task and every task it added afterward, because those bids depended on the lost task.
 
-### English
+The algorithm stops when `y` and `z` stay unchanged for as many iterations as there are UAVs. The script then checks that all UAVs agree on the same winners and that every task has one.
 
-* 4 UAV agents
-* STL-based rendering
-* Independent movement
+### Failure recovery: auction
 
-### 한국어
-
-* 4대 UAV 운용
-* STL 기반 시각화
-* UAV별 독립 이동
-
----
-
-## 2. Random Task Generation
-
-### English
-
-Random tasks are generated inside a predefined mission area.
-
-### 한국어
-
-사전에 정의된 임무 영역 내부에 Task를 무작위 생성한다.
+At step 100, a randomly selected UAV stops and its unfinished tasks are released. Each surviving UAV bids on each released task, one task at a time:
 
 ```matlab
-tx = -40 + 80 * rand;
-ty = -40 + 80 * rand;
-tz = 5;
+reBid = reward - distanceCost - workloadWeight * workload;
 ```
 
----
+Here, `distanceCost` is the UAV's current distance to the task and `workload` is its current queue length. The highest bidder appends the task to the end of its queue.
 
-## 3. Bid Matrix Generation
+## Parameters
 
-### English
+| Parameter | Value | Description |
+|---|---:|---|
+| `numUAV` | 4 | Number of UAVs |
+| `numTasks` | 20 | Number of tasks |
+| `bundleSize` | 5 | Maximum tasks per UAV during CBBA |
+| `reward` | 100 | Task reward |
+| `lambda` | 0.98 | Discount per meter traveled |
+| `speed` | 0.4 | Distance traveled per simulation step (m) |
 
-Each UAV calculates a bid value for every task based on travel distance.
+## Run
 
-Higher bid values indicate more desirable tasks.
+**Requirements:** MATLAB. The project was developed with R2026a and needs no additional toolboxes.
 
-### 한국어
-
-각 UAV는 모든 Task에 대해 Bid 값을 계산한다.
-
-현재 Bid는 UAV와 Task 간의 거리를 기반으로 계산된다.
+1. Clone this repository.
+2. Make sure `multirotor.stl` is in the same folder as `Task05_CBBA.m` or on the MATLAB path.
+3. Open the `Task05_CBBA` folder in MATLAB.
+4. Run:
 
 ```matlab
-distance = norm(tasks(j,:) - uavPos{i});
-bidMatrix(i,j) = reward - distance;
+Task05_CBBA
 ```
 
----
+The 3D figure shows UAV positions, task status, and each UAV's queue. The Command Window logs CBBA results, reallocation decisions, and task completions.
 
-## 4. Bundle Construction
+Task positions and the failed UAV are random, so each run is different.
 
-### English
+## Repository Structure
 
-Each UAV selects the highest-valued tasks and stores them in a local bundle.
+| Folder | Stage |
+|---|---|
+| `Task04_Cost_Based_Task_Allocation` | Nearest-UAV allocation with cost-based reallocation after failure |
+| `Task05_CBBA` | CBBA allocation and auction-based reallocation |
 
-### 한국어
+## Limitations
 
-각 UAV는 높은 Bid를 가지는 Task를 선택하여 Bundle을 생성한다.
+- Message passing is simulated synchronously inside one MATLAB process, with no packet loss or delay.
+- The failure is detected immediately and always occurs at step 100.
+- Reallocation uses a separate auction rather than rerunning CBBA, and it does not reoptimize existing paths.
+- Tasks are static, have equal rewards, and are at the same altitude.
+- UAVs follow simple constant-speed motion, with no dynamics, battery, or collision models.
 
-Example:
+## Reference
 
-```text
-UAV1 : [5 9 19 15 11]
-UAV2 : [7 2 15 8 1]
-UAV3 : [17 20 10 16 13]
-UAV4 : [3 14 6 18 1]
-```
-
----
-
-## 5. Conflict Detection
-
-### English
-
-Multiple UAVs may select the same task.
-
-Conflict tasks are detected before consensus.
-
-### 한국어
-
-여러 UAV가 동일 Task를 선택하는 경우 Conflict가 발생한다.
-
-Consensus 이전에 Conflict Task를 탐지한다.
-
-Example:
-
-```text
-Task 1 claimed by UAV 2 4
-Task 15 claimed by UAV 1 2
-```
-
----
-
-## 6. Consensus-Based Conflict Resolution
-
-### English
-
-The UAV with the highest bid wins ownership of the task.
-
-The losing UAV removes the task from its bundle.
-
-### 한국어
-
-가장 높은 Bid를 가진 UAV가 해당 Task를 획득한다.
-
-패배한 UAV는 자신의 Bundle에서 해당 Task를 제거한다.
-
-Example:
-
-```text
-Task 15 claimed by UAV 1 2
-→ Winner UAV 1
-```
-
----
-
-## 7. Missing Task Recovery
-
-### English
-
-Tasks that are not assigned after consensus are automatically detected and reassigned.
-
-### 한국어
-
-Consensus 이후 할당되지 않은 Task를 탐지하고 자동으로 재할당한다.
-
-Example:
-
-```text
-Assigned Tasks
-Missing Tasks
-```
-
----
-
-## 8. Queue-Based Task Execution
-
-### English
-
-Tasks are executed sequentially using UAV-specific queues.
-
-### 한국어
-
-각 UAV는 Queue에 저장된 Task를 순차적으로 수행한다.
-
-```matlab
-currentTask = uavQueue{i}(1);
-```
-
----
-
-## 9. Agent Failure Simulation
-
-### English
-
-A UAV failure is injected during mission execution.
-
-Remaining tasks are released and become available for reassignment.
-
-### 한국어
-
-Mission 수행 중 UAV Failure를 발생시킨다.
-
-고장 UAV의 잔여 Task는 Release되어 재할당 대상이 된다.
-
-```matlab
-failedUAV = randi([1,numUAV]);
-```
-
----
-
-## 10. Auction-Based Adaptive Reallocation
-
-### English
-
-Released tasks are redistributed using a ReBid mechanism.
-
-The reassignment considers the original task bid and the current workload of each UAV.
-
-### 한국어
-
-Release된 Task는 ReBid 기반 경매 방식으로 재할당된다.
-
-재할당 시 원래 Bid 값과 현재 UAV 작업량을 함께 고려한다.
-
-### ReBid Function
-
-```matlab
-baseBid = bidMatrix(k,failedTask);
-
-workloadPenalty = 5 * length(uavQueue{k});
-
-reBid = baseBid - workloadPenalty;
-```
-
-### 한국어 설명
-
-* Base Bid : 초기 CBBA Bid
-* Workload Penalty : 현재 Queue 길이
-* ReBid : 재할당 Bid
-
----
-
-## 11. Reallocation Flow
-
-```text
-Agent Failure
-      ↓
-Release Remaining Tasks
-      ↓
-Compute ReBid
-      ↓
-Auction
-      ↓
-Assign Winner UAV
-      ↓
-Append Task To Queue
-```
-
-### 한국어
-
-```text
-고장 발생
-      ↓
-잔여 Task Release
-      ↓
-ReBid 계산
-      ↓
-경매 수행
-      ↓
-최적 UAV 선정
-      ↓
-Queue 추가
-```
-
----
-
-# Limitations | 한계
-
-## English
-
-* Simplified CBBA implementation
-* Perfect communication assumed
-* No battery constraints
-* No task priority
-* No dynamic bundle rebuilding after failure
-
-## 한국어
-
-* CBBA 단순화 버전 구현
-* 통신 제약 미반영
-* 배터리 모델 미반영
-* Task Priority 미반영
-* Failure 이후 Bundle 재구성 미구현
-
----
-
-# Development Environment | 개발 환경
-
-* MATLAB
-* STL UAV Model
-* patch()
-* scatter3()
-* Cell Array Queue
-
----
-
-# Project Status | 진행 현황
-
-| Feature                    | Status   |
-| -------------------------- | -------- |
-| Bid Matrix Generation      | Complete |
-| Bundle Construction        | Complete |
-| Conflict Detection         | Complete |
-| Consensus Resolution       | Complete |
-| Missing Task Recovery      | Complete |
-| Agent Failure Simulation   | Complete |
-| Auction-Based Reallocation | Complete |
-| CBBA-Inspired Allocation   | Complete |
+H.-L. Choi, L. Brunet, and J. P. How, "Consensus-Based Decentralized Auctions for Robust Task Allocation," *IEEE Transactions on Robotics*, vol. 25, no. 4, pp. 912-926, 2009.
