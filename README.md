@@ -2,7 +2,11 @@
 
 A MATLAB simulation of a four-UAV team that allocates tasks with the Consensus-Based Bundle Algorithm (CBBA) and reallocates unfinished tasks through an auction when a UAV fails.
 
-<!-- Add demo GIF here: ![Failure and reallocation demo](docs/demo.gif) -->
+![Failure and reallocation demo](Results/demo.gif)
+
+| UAV failure | Mission complete |
+|---|---|
+| ![UAV failure](Results/failure.png) | ![Mission complete](Results/complete.png) |
 
 ## Problem
 
